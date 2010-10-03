@@ -1,4 +1,4 @@
-import re, time
+import re, time, urllib, urllib2, cookielib
 
 ####################################################################################################
 VIDEO_PREFIX = "/video/nhl"
@@ -29,6 +29,8 @@ def VideoMainMenu():
     dir = MediaContainer(viewGroup="List")
 
     dir.Append(Function(DirectoryItem(NHLMenu, title="NHL.com", thumb=R(NHL), art=R(ART))))
+    # dir.Append(Function(DirectoryItem(GCMenu, title="NHL Gamecenter Live", thumb=R(NHL), art=R(ART))))
+    dir.Append(Function(WebVideoItem(GCMenu, title="NHL Gamecenter Live", thumb=R(NHL), art=R(ART))))
     dir.Append(Function(DirectoryItem(ESPNMenu, title="ESPN360", thumb=R(NHL), art=R(ART))))
         
     return dir
@@ -169,6 +171,26 @@ def PlayAudio(sender, url=None, team_url=None):
 def Decrypt(url):
     return Helper.Run('decrypt', url) 
     
+
+### Gamecenter ###
+
+def GCMenu(sender):
+    handler = urllib2.build_opener(urllib2.HTTPCookieProcessor())
+    urllib2.install_opener(handler)
+    params = urllib.urlencode({"username": "USERNAME", "password": "PASSWORD"})
+    f = handler.open("https://gamecenter.nhl.com/nhlgc/secure/login", params)
+    data = f.read()
+    f.close()
+    f = handler.open("http://gamecenter.nhl.com/nhlgc/servlets/encryptvideopath?type=fvod&isFlex=true&path=rtmp://cdncon.fcod.llnwd.net/a277/e4/mp4:s/nhl/svod/flv/2009/3_136_buf_bos_0910_20100426_FINAL_hd.mp4?eid=24685&pid=24837&gid=3000&pt=1&uid=332058")
+    data = f.read()
+    f.close()
+    url = XML.ElementFromString(data).find(".//path").text
+    Log(url)
+    split_url = re.split('/mp4', url)
+    url = split_url[0]
+    clip = "mp4%s" % split_url[1]
+    return Redirect(RTMPVideoItem(url, clip=clip, width=960, height=540))
+
 ### ESPN ###
 
 def ESPNMenu(sender):
@@ -196,9 +218,7 @@ def ESPNChannel(sender, channel=None):
     return dir
     
 def PlayESPN(sender, url=None):
-    Log(url)
     url = Decrypt(url)
-    Log(url)
     new_url = re.sub(r"\?e=", "_sd?e=", url)
     split_url = re.split('/mp4', new_url)
     url = split_url[0]
