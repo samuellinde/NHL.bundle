@@ -116,13 +116,19 @@ def ChannelVideos(sender, menuid=0, menutype=0, team_url=None):
         dir.Append(VideoItem(key=url, title=title))
     
     for event in liveevents:
-        is_live = True if event.get("isLive") == "true" else False
-        data = re.search(r"(rtmp[^']+)','([^']+)'", event.get('onclick'))
-        rtmp_url = re.split("/cdncon/", data.group(1))
+        is_live = True if event.get("islive") == "true" else False
+        try:
+            data = re.search(r"(rtmp[^']+)','([^']+)'", event.get('onclick'))
+            is_rtmp = True
+            url = data.group(1)
+        except AttributeError, e:
+            data = re.search(r"(http[^']+)','([^']+)'", event.get('onclick'))
+            is_rtmp = False
+            url = data.group(1)
         title = data.group(2)
         summary = event.get("title")
         if (is_live == True):
-            dir.Append(Function(WebVideoItem(PlayRTMP, title=title, summary=summary), url=rtmp_url, is_live=is_live))
+            dir.Append(Function(WebVideoItem(PlayRTMP, title=title, summary=summary), url=url, team_url=team_url))
         else:
             dir.Append(Function(DirectoryItem(PlayNotLive, title, summary=summary)))
     
@@ -153,10 +159,14 @@ def ChannelVideos(sender, menuid=0, menutype=0, team_url=None):
 def PlayNotLive(sender):
     return MessageContainer("Stream is not live yet", "Please check back later.")
     
-def PlayRTMP(sender, url=None, is_live=False):
-    url = rtmp_url[0] + "/cdncon"
-    clip = rtmp_url[1]
-    return Redirect(WebVideoItem(url, clip=clip, title=title, summary=summary, live=True))
+def PlayRTMP(sender, url=None, team_url=None):
+    request = XML.ElementFromURL('%s/servlets/encryptvideopath?isFlex=true&type=fvod&path=%s' % (team_url, String.Quote(url)))
+    split_url = re.split('/cdncon/', request.find(".//path").text)
+    url = "%s/cdncon" % split_url[0]
+    Log(url)
+    clip =  split_url[1]
+    Log(clip)
+    return Redirect(RTMPVideoItem(url, clip=clip, live=True))
 
 def PlayVideo(sender, url=None, team_url=None):
     url = re.sub(r"\.flv", "_sd.flv", url)
