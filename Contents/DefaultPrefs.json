@@ -1,0 +1,17 @@
+[
+    {
+        "id":   "username",
+        "label":    "Your Username",
+        "type": "text",
+        "default":  "",
+    },
+
+    {
+        "id":   "password",
+        "label":    "Your Password",
+        "type": "text",
+        "option":   "hidden",
+        "default":  "",
+    },
+
+]

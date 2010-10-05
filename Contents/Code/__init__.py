@@ -1,4 +1,4 @@
-import re, time, urllib, urllib2, cookielib
+import re, time, urllib, urllib2, cookielib, string
 
 ####################################################################################################
 VIDEO_PREFIX = "/video/nhl"
@@ -24,15 +24,28 @@ def Start():
 
     HTTP.Headers['User-agent'] = 'Mozilla/5.0 (iPad; U; CPU OS 3_2_2 like Mac OS X; en-us) AppleWebKit/531.21.10 (KHTML, like Gecko) Version/4.0.4 Mobile/7B500 Safari/531.21.10'
 
+def ValidatePrefs():
+    u = Prefs['username']
+    p = Prefs['password']
+    ## do some checks and return a
+    ## message container
+    if( u and p ):
+        Log("username = %s"%u)
+    else:
+        return MessageContainer(
+            "Error",
+            "You need to provide a valid username and password. Please register at http://www.lynda.com."
+        )
 
 def VideoMainMenu():    
     dir = MediaContainer(viewGroup="List")
 
     dir.Append(Function(DirectoryItem(NHLMenu, title="NHL.com", thumb=R(NHL), art=R(ART))))
     # dir.Append(Function(DirectoryItem(GCMenu, title="NHL Gamecenter Live", thumb=R(NHL), art=R(ART))))
-    dir.Append(Function(WebVideoItem(GCMenu, title="NHL Gamecenter Live", thumb=R(NHL), art=R(ART))))
+    dir.Append(Function(DirectoryItem(GCMenu, title="NHL Gamecenter Live", thumb=R(NHL), art=R(ART))))
     dir.Append(Function(DirectoryItem(ESPNMenu, title="ESPN360", thumb=R(NHL), art=R(ART))))
-        
+    dir.Append(PrefsItem(title="Preferences",thumb=R(NHL)))
+
     return dir
     
 def NHLMenu(sender):
@@ -185,21 +198,50 @@ def Decrypt(url):
 ### Gamecenter ###
 
 def GCMenu(sender):
+    dir = MediaContainer(viewGroup="List")
+
+    #Login
     handler = urllib2.build_opener(urllib2.HTTPCookieProcessor())
     urllib2.install_opener(handler)
-    params = urllib.urlencode({"username": "USERNAME", "password": "PASSWORD"})
+    u=Prefs['username']
+    p=Prefs['password']
+    params = urllib.urlencode({"username": u, "password": p})
     f = handler.open("https://gamecenter.nhl.com/nhlgc/secure/login", params)
     data = f.read()
     f.close()
-    f = handler.open("http://gamecenter.nhl.com/nhlgc/servlets/encryptvideopath?type=fvod&isFlex=true&path=rtmp://cdncon.fcod.llnwd.net/a277/e4/mp4:s/nhl/svod/flv/2009/3_136_buf_bos_0910_20100426_FINAL_hd.mp4?eid=24685&pid=24837&gid=3000&pt=1&uid=332058")
-    data = f.read()
-    f.close()
-    url = XML.ElementFromString(data).find(".//path").text
-    Log(url)
-    split_url = re.split('/mp4', url)
-    url = split_url[0]
-    clip = "mp4%s" % split_url[1]
-    return Redirect(RTMPVideoItem(url, clip=clip, width=960, height=540))
+
+    #get Games calendar
+    Games = JSON.ObjectFromURL("http://www.nhl.com/ice/GCCalendarJS.htm?year=2010")
+    Log(Games)
+#Forces date for now until calendar feature is implemeted
+#June 9 was the last date I could find a video for
+    date = '06/09/2010'#today()
+
+    #get games list
+    resp = HTTP.Request("http://www.nhl.com/ice/GCScoreboardJS.htm?today=%s&uqid=jsonp1286215424061&_=1286215426621"%date).content.replace("loadScoreboard(",'').replace("})",'}')
+    Log(resp)
+    todaysGames = JSON.ObjectFromString(resp)
+
+    #create gamelist
+    for game in todaysGames.get("games"):
+        gametitle = game.get("atn")+" vs. "+game.get("htn")
+        id = str(game.get("id"))
+        Log(id)
+
+        Log('http://gamecenter.nhl.com/nhlgc/servlets/game?isFlex=true&type=%s&gid=%s&season=%s'%(id[4:6],id[6:10],id[0:4]))
+        f = handler.open('http://gamecenter.nhl.com/nhlgc/servlets/game?isFlex=true&type=%s&gid=%s&season=%s'%(id[4:6],id[6:10],id[0:4]))
+        data = f.read()
+        f.close()
+        videopath = XML.ElementFromString(data.strip())
+
+        videopath = videopath.xpath("//publishPoint")
+        if videopath != None:
+#            dir.Append(Function(RTMPVideoItem(PlayESPN, title=gametitle),url=videopath[0]))
+            dir.Append(Function(DirectoryItem(PopupMessage,title=gametitle), line1=str(gametitle),line2 = str(videopath[0])))
+    return dir
+
+def PopupMessage(sender,line1,line2):
+    return MessageContainer(line1,line2)
 
 ### ESPN ###
 
