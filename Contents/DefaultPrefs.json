@@ -1,0 +1,46 @@
+[
+    {
+        "id":       "gc_enabled",
+        "label":    "Enable Gamecenter?",
+        "type":     "bool",
+        "default":  "true",
+    },
+    {
+        "id":       "gc_username",
+        "label":    "Gamecenter username",
+        "type":     "text",
+        "default":  "username",
+    },
+    {
+        "id":       "gc_password",
+        "label":    "Gamecenter password",
+        "type":     "text",
+        "option":   "hidden",
+        "default":  "",
+    },
+    {
+        "id":       "espn_enabled",
+        "label":    "Enable ESPN360?",
+        "type":     "bool",
+        "default":  "true",
+    },
+    {
+        "id":       "espn_username",
+        "label":    "ESPN360 username",
+        "type":     "text",
+        "default":  "username",
+    },
+    {
+        "id":       "espn_password",
+        "label":    "ESPN360 password",
+        "type":     "text",
+        "option":   "hidden",
+        "default":  "",
+    },
+    {
+        "id":       "enable_hd",
+        "label":    "Enable HD streams?",
+        "type":     "bool",
+        "default":  "true",
+    },
+]

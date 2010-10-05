@@ -29,15 +29,18 @@ def VideoMainMenu():
     dir = MediaContainer(viewGroup="List")
 
     dir.Append(Function(DirectoryItem(NHLMenu, title="NHL.com", thumb=R(NHL), art=R(ART))))
-    # dir.Append(Function(DirectoryItem(GCMenu, title="NHL Gamecenter Live", thumb=R(NHL), art=R(ART))))
-    dir.Append(Function(WebVideoItem(GCMenu, title="NHL Gamecenter Live", thumb=R(NHL), art=R(ART))))
-    dir.Append(Function(DirectoryItem(ESPNMenu, title="ESPN360", thumb=R(NHL), art=R(ART))))
+    if (Prefs['gc_enabled']):
+        dir.Append(Function(DirectoryItem(GCMenu, title="NHL Gamecenter Live", thumb=R(NHL), art=R(ART))))
+        # dir.Append(Function(WebVideoItem(GCMenu, title="NHL Gamecenter Live", thumb=R(NHL), art=R(ART))))
+    if (Prefs['espn_enabled']):
+        dir.Append(Function(DirectoryItem(ESPNMenu, title="ESPN360", thumb=R(NHL), art=R(ART))))
+    dir.Append(PrefsItem(title="Preferences"))
         
     return dir
     
 def NHLMenu(sender):
     dir = MediaContainer(viewGroup="List")
-
+    
     html = HTML.ElementFromURL('http://video.nhl.com/videocenter', errors='ignore')
     teams = html.xpath(".//tr[@id='trTopBanner']//option[@value!='']")
     for team in teams:
@@ -56,19 +59,20 @@ def NHLMenu(sender):
         
     return dir
 
-def ChannelMenu(sender, team_url=None, thumb2=NHL, art2=ART):
 
+def ChannelMenu(sender, team_url=None, thumb2=NHL, art2=ART):
+    
     dir = MediaContainer(viewGroup="InfoList", title2=sender.itemTitle)
     VideoItem.art = art2
     VideoItem.thumb = thumb2
     DirectoryItem.art = art2
     DirectoryItem.thumb = thumb2
-
+    
     html = HTML.ElementFromURL(team_url, errors='ignore')
     channels_html = html.find(".//table[@id='tblMenu']")
-
+    
     channels = channels_html.findall(".//td[@class='menuitem']")
-
+    
     for channel in channels:
         menuid = channel.get('menuid')
         menutype = channel.get('menutype')
@@ -79,6 +83,7 @@ def ChannelMenu(sender, team_url=None, thumb2=NHL, art2=ART):
         dir.Append(Function(DirectoryItem(ChannelVideos, title=title, summary=subtitle), menuid=menuid, menutype=menutype, team_url=team_url))
     
     return dir
+
 
 def ChannelVideos(sender, menuid=0, menutype=0, team_url=None):
     tables = []
@@ -156,6 +161,7 @@ def ChannelVideos(sender, menuid=0, menutype=0, team_url=None):
                 dir.Append(Function(TrackItem(PlayAudio, title=title, artist="NHL", album=subtitle, thumb=img), url=url, team_url=team_url))
     return dir
 
+
 def PlayNotLive(sender):
     return MessageContainer("Stream is not live yet", "Please check back later.")
     
@@ -185,9 +191,19 @@ def Decrypt(url):
 ### Gamecenter ###
 
 def GCMenu(sender):
+    dir = MediaContainer(viewGroup="List")
+    dir.Append(Function(DirectoryItem(GCChannel, title="On today", thumb=R(NHL), art=R(ART)), channel="today"))
+    dir.Append(Function(DirectoryItem(GCChannel, title="Archive", thumb=R(NHL), art=R(ART)), channel="archives"))
+    dir.Append(Function(DirectoryItem(GCChannel, title="Upcoming", thumb=R(NHL), art=R(ART)), channel="upcoming"))
+    return dir
+
+def GCChannel(sender, channel=None):
+    pass
+
+def PlayGC(sender):
     handler = urllib2.build_opener(urllib2.HTTPCookieProcessor())
     urllib2.install_opener(handler)
-    params = urllib.urlencode({"username": "USERNAME", "password": "PASSWORD"})
+    params = urllib.urlencode({"username": Prefs['gc_username'], "password": Prefs['gc_password']})
     f = handler.open("https://gamecenter.nhl.com/nhlgc/secure/login", params)
     data = f.read()
     f.close()
