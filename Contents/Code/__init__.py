@@ -180,23 +180,19 @@ def PlayNotLive(sender):
     return MessageContainer("Stream is not live yet", "Please check back later.")
     
 def PlayRTMP(sender, url=None, team_url=None):
-    request = XML.ElementFromURL('%s/servlets/encryptvideopath?isFlex=true&type=fvod&path=%s' % (team_url, String.Quote(url)))
-    split_url = re.split('/cdncon/', request.find(".//path").text)
+    encrypted_url = Decrypt(url)
+    split_url = re.split('/cdncon/', encrypted_url)
     url = "%s/cdncon" % split_url[0]
-    Log(url)
     clip =  split_url[1]
-    Log(clip)
     return Redirect(RTMPVideoItem(url, clip=clip, live=True))
 
 def PlayVideo(sender, url=None, team_url=None):
     url = re.sub(r"\.flv", "_sd.flv", url)
-    request = XML.ElementFromURL('%s/servlets/encryptvideopath?isFlex=true&type=fvod&path=%s' % (team_url, String.Quote(url)))
-    return Redirect(request.find("path").text)
+    return Decrypt(url)
 
 def PlayAudio(sender, url=None, team_url=None):
     url = re.sub(r"\.flv", "_sd.flv", url)
-    request = XML.ElementFromURL('%s/servlets/encryptvideopath?isFlex=true&type=audio&path=%s' % (team_url, String.Quote(url)))
-    return Redirect(request.find("path").text)
+    return Decrypt(url, "nhl", "audio")
 
 
 ### Gamecenter ###
@@ -211,7 +207,6 @@ def GCLogin():
     data = f.read()
     f.close()
     return handler
-
 
 
 def GCArchives(handler, params, servlet="archives"):
@@ -268,6 +263,7 @@ def GCMenu(sender, channel=None, season=None, season_start=None, season_end=None
             gametitle = "%s vs. %s" % (game.find("./awayTeam").text, game.find("./homeTeam").text)
             gamedate = Datetime.ParseDate(game.find("./date").text)
             url = game.find(".//publishPoint").text
+            Log(url)
             dir.Append(Function(WebVideoItem(PlayGC, title=gametitle, subtitle=gamedate), url=url))    
     return dir
 
@@ -282,6 +278,7 @@ def PlayGC(sender, url=None):
         quality = "_sd"
     url = url.replace(".mp4", "%s.mp4" % quality) # Add quality to path
     params = urllib.urlencode({"type": "fvod", "isFlex": "true", "path": url})
+    
     f = handler.open("http://gamecenter.nhl.com/nhlgc/servlets/encryptvideopath", params)
     data = f.read()
     f.close()
@@ -322,12 +319,12 @@ def ESPNChannel(sender, channel=None):
     return dir
     
 def PlayESPN(sender, url=None):
-    url = Decrypt(url)
+    url = Decrypt(url, "espn")
     new_url = re.sub(r"\?e=", "_sd?e=", url)
     split_url = re.split('/mp4', new_url)
     url = split_url[0]
     clip = "mp4%s" % split_url[1]
     return Redirect(RTMPVideoItem(url, clip=clip, width=640, height=360))
 
-def Decrypt(url):
-    return Helper.Run('decrypt', url) 
+def Decrypt(url, service="nhl", url_type="fvod"):
+    return Helper.Run('decrypt', url, service, url_type) 
