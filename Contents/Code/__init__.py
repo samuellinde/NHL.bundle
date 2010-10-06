@@ -184,7 +184,7 @@ def PlayRTMP(sender, url=None, team_url=None):
     split_url = re.split('/cdncon/', encrypted_url)
     url = "%s/cdncon" % split_url[0]
     clip =  split_url[1]
-    return Redirect(RTMPVideoItem(url, clip=clip, live=True))
+    return Redirect(RTMPVideoItem(url, clip=clip, width=640, height=360, live=True))
 
 def PlayVideo(sender, url=None, team_url=None):
     url = re.sub(r"\.flv", "_sd.flv", url)
