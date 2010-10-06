@@ -204,9 +204,10 @@ def GCLogin():
     p = Prefs['gc_password']
     params = urllib.urlencode({"username": u, "password": p})
     f = handler.open("https://gamecenter.nhl.com/nhlgc/secure/login", params)
+    headers = f.info().headers
     data = f.read()
     f.close()
-    return handler
+    return (handler, headers)
 
 
 def GCArchives(handler, params, servlet="archives"):
@@ -225,7 +226,7 @@ def GCMainMenu(sender):
     return dir
 
 def GCMenu(sender, channel=None, season=None, season_start=None, season_end=None, month=None, date=None, team=None, condensed=False):    
-    handler = GCLogin() # Login
+    handler, headers = GCLogin() # Login
     
     # GC Archive – Shows seasons
     if (channel == "archive"):
@@ -263,7 +264,6 @@ def GCMenu(sender, channel=None, season=None, season_start=None, season_end=None
             gametitle = "%s vs. %s" % (game.find("./awayTeam").text, game.find("./homeTeam").text)
             gamedate = Datetime.ParseDate(game.find("./date").text)
             url = game.find(".//publishPoint").text
-            Log(url)
             dir.Append(Function(WebVideoItem(PlayGC, title=gametitle, subtitle=gamedate), url=url))    
     return dir
 
@@ -271,19 +271,19 @@ def PopupMessage(sender,line1,line2):
     return MessageContainer(line1,line2)
 
 def PlayGC(sender, url=None):
-    handler = GCLogin() # Login
+    handler, headers = GCLogin() # Login
     if (Prefs["enable_hd"]):
         quality = "_hd"
     else:
         quality = "_sd"
     url = url.replace(".mp4", "%s.mp4" % quality) # Add quality to path
-    params = urllib.urlencode({"type": "fvod", "isFlex": "true", "path": url})
-    
-    f = handler.open("http://gamecenter.nhl.com/nhlgc/servlets/encryptvideopath", params)
-    data = f.read()
-    f.close()
-    url = XML.ElementFromString(data).find("./path").text
-    # Split RTMP url & clip parameters
+    # Create cookie string
+    cookies = []
+    for h in headers:
+        if h[0:10] == "Set-Cookie":
+            cookies.append(h[12:-2])
+    cookie_string = ', '.join(cookies)
+    url = DecryptGC(url, cookie_string) # Pass params to GC helper
     split_url = re.split('/mp4', url)
     url = split_url[0]
     clip = "mp4%s" % split_url[1]
@@ -291,6 +291,9 @@ def PlayGC(sender, url=None):
         return Redirect(RTMPVideoItem(url, clip=clip, width=960, height=540))
     else:
         return Redirect(RTMPVideoItem(url, clip=clip, width=640, height=360))
+
+def DecryptGC(url, cookies):
+    return Helper.Run('decrypt_gc', url, cookies) 
 
 ### ESPN ###
 
