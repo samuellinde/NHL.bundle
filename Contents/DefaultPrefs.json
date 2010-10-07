@@ -9,7 +9,7 @@
         "id":       "gc_username",
         "label":    "Gamecenter username",
         "type":     "text",
-        "default":  "username",
+        "default":  "",
     },
     {
         "id":       "gc_password",
@@ -28,7 +28,7 @@
         "id":       "espn_username",
         "label":    "ESPN360 username",
         "type":     "text",
-        "default":  "username",
+        "default":  "",
     },
     {
         "id":       "espn_password",
